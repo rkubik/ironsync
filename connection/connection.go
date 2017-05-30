@@ -42,6 +42,10 @@ const (
 	DefaultTimeout = 30
 	// DefaultMaxPacketSize - Default max packet size
 	DefaultMaxPacketSize = 1 << 15
+	// DefaultSSHPort - Default SSH port
+	DefaultSSHPort = 22
+	// DefaultFTPPort - Default FTP port
+	DefaultFTPPort = 21
 )
 
 type downloadFunc func(*Connection, *resource.Resource, *os.File) (bool, error)
@@ -203,17 +207,12 @@ func downloadDropbox(c *Connection, r *resource.Resource, tmpFile *os.File) (mod
 	config.HTTPClient.Timeout = time.Duration(c.Timeout) * time.Second
 
 	db := dropbox.New(config)
-	remotePath := r.RemotePath
-
-	if remotePath[0] != '/' {
-		remotePath = "/" + remotePath
-	}
 
 	// Check ContentHash to see if file has been modifed. Continue on error.
 	localHash, err := dropbox.FileContentHash(r.Path)
 	if err == nil {
 		metaData, err := db.Files.GetMetadata(&dropbox.GetMetadataInput{
-			Path:             remotePath,
+			Path:             r.RemotePath,
 			IncludeMediaInfo: false,
 		})
 
@@ -222,7 +221,7 @@ func downloadDropbox(c *Connection, r *resource.Resource, tmpFile *os.File) (mod
 		}
 	}
 
-	remoteInput := dropbox.DownloadInput{Path: remotePath}
+	remoteInput := dropbox.DownloadInput{Path: r.RemotePath}
 
 	dstOutput, err := db.Files.Download(&remoteInput)
 	if err != nil {
@@ -257,7 +256,7 @@ func CreateGitHubGistConnection(name, gistID, gistUsername string) Connection {
 // CreateSFTPConnection - Create a new SFTP connection
 func CreateSFTPConnection(name, hostname, authUsername string) Connection {
 	c := CreateConnection(name, ConnectionTypeSFTP, downloadSFTP)
-	c.Port = 22
+	c.Port = DefaultSSHPort
 	c.Hostname = hostname
 	c.AuthUsername = authUsername
 	return c
@@ -266,7 +265,7 @@ func CreateSFTPConnection(name, hostname, authUsername string) Connection {
 // CreateFTPConnection - Create a new FTP connection
 func CreateFTPConnection(name, hostname, authUsername, authPassword string) Connection {
 	c := CreateConnection(name, ConnectionTypeFTP, downloadFTP)
-	c.Port = 22
+	c.Port = DefaultFTPPort
 	c.Hostname = hostname
 	c.AuthUsername = authUsername
 	c.AuthPassword = authPassword

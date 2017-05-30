@@ -95,7 +95,9 @@ FTP settings:
 
 Dropbox settings:
 
-- `remote_path`: File path on Dropbox
+- `remote_path`: Dropbox path format. See "Path formats"[1].
+
+1. https://www.dropbox.com/developers/documentation/http/documentation
 
 ## TODO
 
