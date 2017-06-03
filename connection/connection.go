@@ -13,6 +13,8 @@ import (
 
 	"log"
 
+	"ironsync/utils"
+
 	"github.com/jlaffaye/ftp"
 	"github.com/pkg/sftp"
 	"github.com/tj/go-dropbox"
@@ -58,8 +60,13 @@ type Connection struct {
 	Resources    []*resource.Resource // Array of Resources
 	DownloadFunc downloadFunc         // Download function (nil if not set)
 
+	// Connection objects
+	SFTPClient *sftp.Client    // SFTP client (used for persistent connections)
+	FTPClient  *ftp.ServerConn // FTP client (used for persistent connections)
+
 	// Configuration
-	Timeout       int // Connection timouet (seconds)
+	Timeout       int  // Connection timouet (seconds)
+	Persistent    bool // Keep a persistent connection
 	URL           string
 	Hostname      string
 	Port          int
@@ -73,19 +80,31 @@ type Connection struct {
 }
 
 func downloadFTP(c *Connection, r *resource.Resource, tmpFile *os.File) (modified bool, err error) {
-	addr := fmt.Sprintf("%s:%d", c.Hostname, c.Port)
+	if c.FTPClient == nil {
+		addr := fmt.Sprintf("%s:%d", c.Hostname, c.Port)
 
-	conn, err := ftp.DialTimeout(addr, time.Duration(c.Timeout)*time.Second)
-	if err != nil {
-		return
+		conn, err := ftp.DialTimeout(addr, time.Duration(c.Timeout)*time.Second)
+		if err != nil {
+			return modified, err
+		}
+
+		err = conn.Login(c.AuthUsername, c.AuthPassword)
+		if err != nil {
+			return modified, err
+		}
+
+		c.FTPClient = conn
 	}
 
-	err = conn.Login(c.AuthUsername, c.AuthPassword)
-	if err != nil {
-		return
+	if c.Persistent {
+		defer c.FTPClient.Logout()
+		defer c.FTPClient.Quit()
+		defer func() {
+			c.FTPClient = nil
+		}()
 	}
 
-	remoteFile, err := conn.Retr(r.RemotePath)
+	remoteFile, err := c.FTPClient.Retr(r.RemotePath)
 	if err != nil {
 		return
 	}
@@ -99,57 +118,52 @@ func downloadFTP(c *Connection, r *resource.Resource, tmpFile *os.File) (modifie
 	return true, err
 }
 
-func publicKeyFile(file string) ssh.AuthMethod {
-	buffer, err := ioutil.ReadFile(file)
-	if err != nil {
-		return nil
-	}
-
-	key, err := ssh.ParsePrivateKey(buffer)
-	if err != nil {
-		return nil
-	}
-
-	return ssh.PublicKeys(key)
-}
-
 func downloadSFTP(c *Connection, r *resource.Resource, tmpFile *os.File) (modified bool, err error) {
-	var auths []ssh.AuthMethod
+	if c.SFTPClient == nil {
+		var auths []ssh.AuthMethod
 
-	aconn, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
-	if err == nil {
-		auths = append(auths, ssh.PublicKeysCallback(agent.NewClient(aconn).Signers))
+		aconn, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
+		if err == nil {
+			auths = append(auths, ssh.PublicKeysCallback(agent.NewClient(aconn).Signers))
+		}
+
+		if c.AuthPassword != "" {
+			auths = append(auths, ssh.Password(c.AuthPassword))
+		}
+
+		if c.PrivateKey != "" {
+			auths = append(auths, utils.PublicKeyFile(c.PrivateKey))
+		}
+
+		sshConfig := ssh.ClientConfig{
+			User:            c.AuthUsername,
+			Auth:            auths,
+			HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+			Timeout:         time.Duration(c.Timeout) * time.Second,
+		}
+
+		addr := fmt.Sprintf("%s:%d", c.Hostname, c.Port)
+		conn, err := ssh.Dial("tcp", addr, &sshConfig)
+		if err != nil {
+			return modified, err
+		}
+
+		sftpClient, err := sftp.NewClient(conn, sftp.MaxPacket(c.MaxPacketSize))
+		if err != nil {
+			conn.Close()
+			return modified, err
+		}
+		c.SFTPClient = sftpClient
 	}
 
-	if c.AuthPassword != "" {
-		auths = append(auths, ssh.Password(c.AuthPassword))
+	if !c.Persistent {
+		defer c.SFTPClient.Close()
+		defer func() {
+			c.SFTPClient = nil
+		}()
 	}
 
-	if c.PrivateKey != "" {
-		auths = append(auths, publicKeyFile(c.PrivateKey))
-	}
-
-	sshConfig := ssh.ClientConfig{
-		User:            c.AuthUsername,
-		Auth:            auths,
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout:         time.Duration(c.Timeout) * time.Second,
-	}
-
-	addr := fmt.Sprintf("%s:%d", c.Hostname, c.Port)
-	conn, err := ssh.Dial("tcp", addr, &sshConfig)
-	if err != nil {
-		return
-	}
-	defer conn.Close()
-
-	sshClient, err := sftp.NewClient(conn, sftp.MaxPacket(c.MaxPacketSize))
-	if err != nil {
-		return
-	}
-	defer sshClient.Close()
-
-	remoteFile, err := sshClient.Open(r.RemotePath)
+	remoteFile, err := c.SFTPClient.Open(r.RemotePath)
 	if err != nil {
 		return
 	}
@@ -242,7 +256,7 @@ func downloadDropbox(c *Connection, r *resource.Resource, tmpFile *os.File) (mod
 
 // CreateConnection - Create a base connection
 func CreateConnection(name string, connType int, connDownloadFunc downloadFunc) Connection {
-	return Connection{name, connType, []*resource.Resource{}, connDownloadFunc, DefaultTimeout, "", "", 0, DefaultMaxPacketSize, "", "", "", "", "", ""}
+	return Connection{name, connType, []*resource.Resource{}, connDownloadFunc, nil, nil, DefaultTimeout, false, "", "", 0, DefaultMaxPacketSize, "", "", "", "", "", ""}
 }
 
 // CreateHTTPConnection - Create a new HTTP connection

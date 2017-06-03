@@ -3,8 +3,8 @@
 Project to help learn the Go Programming Language.
 
 This service allows you to download file updates from many different remote
-locations (HTTP, GitHub Gist, SFTP, FTP). Useful for syncing system settings,
-key files, IDE preferences, password databases, etc.
+locations (HTTP, GitHub Gist, SFTP, FTP, Dropbox). Useful for syncing system 
+settings, key files, IDE preferences, password databases, etc.
 
 ## Building
 
@@ -53,6 +53,7 @@ SFTP settings:
 - `auth_username`: Username
 - `auth_password`: Password (optional)
 - `private_key`: Private Key (optional)
+- `persistent`: Keep a persistent connection (Default false)
 
 FTP settings:
 
@@ -60,6 +61,7 @@ FTP settings:
 - `port`: Port (Default 22)
 - `auth_username`: Username
 - `auth_password`: Password
+- `persistent`: Keep a persistent connection (Default false)
 
 Dropbox settings:
 
@@ -98,10 +100,6 @@ Dropbox settings:
 - `remote_path`: Dropbox path format. See "Path formats"[1].
 
 1. https://www.dropbox.com/developers/documentation/http/documentation
-
-## TODO
-
-- Persistent connections
 
 ## Examples
 

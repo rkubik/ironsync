@@ -3,8 +3,11 @@ package utils
 import (
 	"bytes"
 	"io"
+	"io/ioutil"
 	"os"
 	"time"
+
+	"golang.org/x/crypto/ssh"
 )
 
 var (
@@ -55,4 +58,19 @@ func DeepCompare(file1, file2 string) (equal bool) {
 // IsZeroTime reports whether t is obviously unspecified (either zero or Unix()=0).
 func IsZeroTime(t time.Time) bool {
 	return t.IsZero() || t.Equal(unixEpochTime)
+}
+
+// PublicKeyFile reads public key's from a private key file into memory
+func PublicKeyFile(file string) ssh.AuthMethod {
+	buffer, err := ioutil.ReadFile(file)
+	if err != nil {
+		return nil
+	}
+
+	key, err := ssh.ParsePrivateKey(buffer)
+	if err != nil {
+		return nil
+	}
+
+	return ssh.PublicKeys(key)
 }

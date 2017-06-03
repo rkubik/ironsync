@@ -116,6 +116,11 @@ func parseConnectionConfig(connFile string) (connections []*connection.Connectio
 				conn.Port = connPort
 			}
 
+			connPersistent, err := c.Bool(section, "persistent")
+			if err == nil {
+				conn.Persistent = connPersistent
+			}
+
 			connections = append(connections, &conn)
 		} else if connType == "ftp" {
 			// Required
@@ -131,7 +136,7 @@ func parseConnectionConfig(connFile string) (connections []*connection.Connectio
 			}
 
 			connAuthPassword, err := c.String(section, "auth_password")
-			if err == nil {
+			if err != nil {
 				return connections, fmt.Errorf("%s: Section %s missing auth_password", connFile, section)
 			}
 
@@ -148,6 +153,11 @@ func parseConnectionConfig(connFile string) (connections []*connection.Connectio
 				conn.Port = connPort
 			}
 
+			connPersistent, err := c.Bool(section, "persistent")
+			if err == nil {
+				conn.Persistent = connPersistent
+			}
+
 			connections = append(connections, &conn)
 		} else if connType == "dropbox" {
 			// Required
@@ -157,6 +167,11 @@ func parseConnectionConfig(connFile string) (connections []*connection.Connectio
 			}
 
 			conn := connection.CreateDropboxConnection(section, connDropboxToken)
+
+			connPersistent, err := c.Bool(section, "persistent")
+			if err == nil {
+				conn.Persistent = connPersistent
+			}
 
 			connections = append(connections, &conn)
 		} else {
