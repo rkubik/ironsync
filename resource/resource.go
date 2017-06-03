@@ -17,21 +17,22 @@ type Resource struct {
 	Group string      // Group for GID
 	Perms os.FileMode // File permissions
 	// State
-	NextUpdate time.Time // Time of next update
-	LastUpdate time.Time // Time of last successful update
+	NextUpdateTime   time.Time // Time of next update
+	LastUpdateTime   time.Time // Time of last successful update (not accurate)
+	LastModifiedTime time.Time // Last modified time on the server (accurate)
 }
 
 // CreateResource - Create a new resource object
 func CreateResource(path string) Resource {
-	return Resource{path, "", 60, 30, "", "", 0, time.Time{}, time.Time{}}
+	return Resource{path, "", 60, 30, "", "", 0, time.Time{}, time.Time{}, time.Time{}}
 }
 
-// SetNextUpdate - Set next update to given interval
-func (r *Resource) SetNextUpdate(interval int) {
-	r.NextUpdate = time.Now().Add(time.Second * time.Duration(interval))
+// SetNextUpdateTime - Set next update to given interval
+func (r *Resource) SetNextUpdateTime(interval int) {
+	r.NextUpdateTime = time.Now().Add(time.Second * time.Duration(interval))
 }
 
-// SetLastUpdate - Set last update to current time
-func (r *Resource) SetLastUpdate() {
-	r.LastUpdate = time.Now()
+// SetLastUpdateTime - Set last update to current time
+func (r *Resource) SetLastUpdateTime() {
+	r.LastUpdateTime = time.Now()
 }

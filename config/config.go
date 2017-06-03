@@ -191,6 +191,11 @@ func parseResourceConfig(resConfig string, connections []*connection.Connection)
 
 		res := resource.CreateResource(section)
 
+		resStat, err := os.Stat(section)
+		if err == nil {
+			res.LastModifiedTime = resStat.ModTime()
+		}
+
 		// Optional
 		resInterval, err := c.Int(section, "interval")
 		if err == nil {

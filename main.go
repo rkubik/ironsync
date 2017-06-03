@@ -29,20 +29,20 @@ var (
 func setFilePermissions(fileSrc string, fileDst string, userString string, groupString string, perms os.FileMode) (err error) {
 	// Permissions - If none are provided then use permissions of existing
 	// file. If existing file does not exist then use default.
-	fileMode := perms
-	if fileMode == 0 {
+	if perms == 0 {
 		fileInfo, err := os.Stat(fileDst)
 		if err != nil {
 			if os.IsNotExist(err) {
-				fileMode = os.FileMode(int(0664))
+				perms = os.FileMode(int(0664))
 			} else {
 				return err
 			}
+		} else {
+			perms = fileInfo.Mode()
 		}
-		fileMode = fileInfo.Mode()
 	}
 
-	err = os.Chmod(fileSrc, fileMode)
+	err = os.Chmod(fileSrc, perms)
 	if err != nil {
 		return
 	}
@@ -89,19 +89,19 @@ func connectionWorker(c *connection.Connection) {
 
 	for {
 		for _, r := range c.Resources {
-			if time.Now().After(r.NextUpdate) {
+			if time.Now().After(r.NextUpdateTime) {
 				log.Printf("[%s][%s] Updating resource", c.Name, r.Path)
 
 				modified, path, err := c.Download(r)
 				if err != nil {
 					log.Printf("[%s][%s] Downloading resource failed: %v", c.Name, r.Path, err)
-					r.SetNextUpdate(r.RetryInterval)
+					r.SetNextUpdateTime(r.RetryInterval)
 					continue
 				}
 
 				if !modified {
 					log.Printf("[%s][%s] Resource not modified; download not performed", c.Name, r.Path)
-					r.SetNextUpdate(r.Interval)
+					r.SetNextUpdateTime(r.Interval)
 					continue
 				}
 
@@ -109,28 +109,28 @@ func connectionWorker(c *connection.Connection) {
 				equal := utils.DeepCompare(path, r.Path)
 				if equal {
 					log.Printf("[%s][%s] Resource not modified", c.Name, r.Path)
-					r.SetNextUpdate(r.Interval)
+					r.SetNextUpdateTime(r.Interval)
 					continue
 				}
 
 				err = setFilePermissions(path, r.Path, r.User, r.Group, r.Perms)
 				if err != nil {
 					log.Printf("[%s][%s] Setting file permissions failed: %v", c.Name, r.Path, err)
-					r.SetNextUpdate(r.RetryInterval)
+					r.SetNextUpdateTime(r.RetryInterval)
 					continue
 				}
 
 				err = os.Rename(path, r.Path)
 				if err != nil {
 					log.Printf("[%s][%s] Moving file failed %s: %v", c.Name, r.Path, path, err)
-					r.SetNextUpdate(r.RetryInterval)
+					r.SetNextUpdateTime(r.RetryInterval)
 					continue
 				}
 
 				log.Printf("[%s][%s] Resource successfully updated", c.Name, r.Path)
 
-				r.SetNextUpdate(r.Interval)
-				r.SetLastUpdate()
+				r.SetNextUpdateTime(r.Interval)
+				r.SetLastUpdateTime()
 			}
 		}
 		time.Sleep(1000 * time.Millisecond)

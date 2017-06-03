@@ -172,8 +172,6 @@ func downloadHTTP(c *Connection, r *resource.Resource, tmpFile *os.File) (modifi
 		url = fmt.Sprintf("%s/%s", url, r.RemotePath)
 	}
 
-	// @todo Handle If-Modified-Since and Last-Modified headers to prevent an
-	// unnecessary file download
 	client := &http.Client{
 		Timeout: time.Duration(c.Timeout) * time.Second,
 	}
@@ -183,14 +181,24 @@ func downloadHTTP(c *Connection, r *resource.Resource, tmpFile *os.File) (modifi
 		return
 	}
 
-	// @todo Headers
-	//req.Header.Set("name", "value")
+	req.Header.Set("If-Modified-Since", r.LastModifiedTime.UTC().Format(http.TimeFormat))
 
 	resp, err := client.Do(req)
 	if err != nil {
 		return
 	}
 	defer resp.Body.Close()
+
+	lastModifiedStr := resp.Header.Get("Last-Modified")
+	if lastModifiedStr != "" {
+		lastModifiedTime, err := http.ParseTime(lastModifiedStr)
+		if err == nil {
+			if !lastModifiedTime.After(r.LastModifiedTime) {
+				return false, err
+			}
+			r.LastModifiedTime = lastModifiedTime
+		}
+	}
 
 	if resp.StatusCode == 304 {
 		return false, err
