@@ -6,6 +6,11 @@ This service allows you to download file updates from many different remote
 locations (HTTP, GitHub Gist, SFTP, FTP, Dropbox). Useful for syncing system 
 settings, key files, IDE preferences, password databases, etc.
 
+## OS Support
+
+- Linux
+- Windows (partial, permissions untested)
+
 ## Building
 
     go build ironsync
@@ -73,9 +78,9 @@ Resource settings:
 
 - `interval`: Number of seconds between successful updates (Default 60 sec)
 - `retry_interval`: Number of seconds between failed updates (Default 30 sec)
+- `perms`: File permissions (Default 0644)
 - `user`: File user (optional)
 - `group`: 'File group (optional)
-- `perms`: File permissions (Default 0644)
 
 HTTP settings:
 

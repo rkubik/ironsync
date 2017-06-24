@@ -4,11 +4,10 @@ import (
 	"flag"
 	"ironsync/config"
 	"ironsync/connection"
+	"ironsync/permissions"
 	"ironsync/utils"
 	"log"
 	"os"
-	"os/user"
-	"strconv"
 	"time"
 )
 
@@ -25,64 +24,6 @@ var (
 	// ProgVersion - Current version
 	progVersion = "0.1.0"
 )
-
-func setFilePermissions(fileSrc string, fileDst string, userString string, groupString string, perms os.FileMode) (err error) {
-	// Permissions - If none are provided then use permissions of existing
-	// file. If existing file does not exist then use default.
-	if perms == 0 {
-		fileInfo, err := os.Stat(fileDst)
-		if err != nil {
-			if os.IsNotExist(err) {
-				perms = os.FileMode(int(0664))
-			} else {
-				return err
-			}
-		} else {
-			perms = fileInfo.Mode()
-		}
-	}
-
-	err = os.Chmod(fileSrc, perms)
-	if err != nil {
-		return
-	}
-
-	// User
-	uid := -1
-	if userString != "" {
-		u, err := user.Lookup(userString)
-		if err != nil {
-			return err
-		}
-
-		uid, err = strconv.Atoi(u.Uid)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Group
-	gid := -1
-	if groupString != "" {
-		g, err := user.LookupGroup(groupString)
-		if err != nil {
-			return err
-		}
-
-		gid, err = strconv.Atoi(g.Gid)
-		if err != nil {
-			return err
-		}
-	}
-
-	if uid != -1 || gid != -1 {
-		err = os.Chown(fileSrc, uid, gid)
-		if err != nil {
-			return err
-		}
-	}
-	return
-}
 
 func connectionWorker(c *connection.Connection) {
 	log.Printf("[%s] Connected started", c.Name)
@@ -113,7 +54,17 @@ func connectionWorker(c *connection.Connection) {
 					continue
 				}
 
-				err = setFilePermissions(path, r.Path, r.User, r.Group, r.Perms)
+				perms := r.Perms
+				if perms == 0 {
+					fileInfo, err := os.Stat(r.Path)
+					if err != nil {
+						perms = os.FileMode(int(0664))
+					} else {
+						perms = fileInfo.Mode()
+					}
+				}
+
+				err = permissions.SetFilePermissions(path, r.User, r.Group, perms)
 				if err != nil {
 					log.Printf("[%s][%s] Setting file permissions failed: %v", c.Name, r.Path, err)
 					r.SetNextUpdateTime(r.RetryInterval)

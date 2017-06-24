@@ -1,7 +1,6 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"ironsync/connection"
 	"ironsync/resource"
@@ -11,13 +10,13 @@ import (
 	"github.com/robfig/config"
 )
 
-func findConnection(name string, connections []*connection.Connection) (c *connection.Connection, err error) {
+func findConnection(name string, connections []*connection.Connection) (c *connection.Connection) {
 	for _, c := range connections {
 		if c.Name == name {
-			return c, err
+			return c
 		}
 	}
-	return c, errors.New("Connection Not Found")
+	return nil
 }
 
 func parseConnectionConfig(connFile string) (connections []*connection.Connection, err error) {
@@ -30,6 +29,10 @@ func parseConnectionConfig(connFile string) (connections []*connection.Connectio
 		// Skip default section, unused
 		if section == "DEFAULT" {
 			continue
+		}
+
+		if findConnection(section, connections) != nil {
+			return connections, fmt.Errorf("%s: Connection defined twice %s", connFile, section)
 		}
 
 		connType, err := c.String(section, "type")
@@ -199,8 +202,8 @@ func parseResourceConfig(resConfig string, connections []*connection.Connection)
 			return fmt.Errorf("%s: Section %s missing connection", resConfig, section)
 		}
 
-		conn, err := findConnection(connName, connections)
-		if err != nil {
+		conn := findConnection(connName, connections)
+		if conn == nil {
 			return fmt.Errorf("%s: Section %s invalid connection %s", resConfig, section, connName)
 		}
 
