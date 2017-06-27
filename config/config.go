@@ -245,6 +245,26 @@ func parseResourceConfig(resConfig string, connections []*connection.Connection)
 			res.Perms = os.FileMode(resPermsInt)
 		}
 
+		resPreUpdateCommand, err := c.String(section, "pre_update_cmd")
+		if err == nil {
+			res.PreUpdateCommand = resPreUpdateCommand
+		}
+
+		resPreUpdateCommandTimeout, err := c.Int(section, "pre_update_cmd_timeout")
+		if err == nil {
+			res.PreUpdateCommandTimeout = resPreUpdateCommandTimeout
+		}
+
+		resPostUpdateCommand, err := c.String(section, "post_update_cmd")
+		if err == nil {
+			res.PostUpdateCommand = resPostUpdateCommand
+		}
+
+		resPostUpdateCommandTimeout, err := c.Int(section, "post_update_cmd_timeout")
+		if err == nil {
+			res.PostUpdateCommandTimeout = resPostUpdateCommandTimeout
+		}
+
 		// Required (based on connection type)
 		resRemotePath, err := c.String(section, "remote_path")
 		if err == nil {

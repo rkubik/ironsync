@@ -2,9 +2,11 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"ironsync/config"
 	"ironsync/connection"
 	"ironsync/permissions"
+	"ironsync/resource"
 	"ironsync/utils"
 	"log"
 	"os"
@@ -25,6 +27,61 @@ var (
 	progVersion = "0.1.0"
 )
 
+func processResource(c *connection.Connection, r *resource.Resource) (bool, error) {
+	if r.PreUpdateCommand != "" {
+		err := utils.RunCmd(r.PreUpdateCommand, r.PreUpdateCommandTimeout)
+		if err != nil {
+			return false, fmt.Errorf("Pre-update cmd failed: %v", err)
+		}
+	}
+
+	modified, path, err := c.Download(r)
+	if err != nil {
+		return false, fmt.Errorf("Downloading resource failed: %v", err)
+	}
+
+	defer os.Remove(path)
+
+	if !modified {
+		return false, nil
+	}
+
+	// Avoid unnecessary overwrite if files are the same
+	equal := utils.DeepCompare(path, r.Path)
+	if equal {
+		return false, nil
+	}
+
+	perms := r.Perms
+	if perms == 0 {
+		fileInfo, err := os.Stat(r.Path)
+		if err != nil {
+			perms = os.FileMode(int(0664))
+		} else {
+			perms = fileInfo.Mode()
+		}
+	}
+
+	err = permissions.SetFilePermissions(path, r.User, r.Group, perms)
+	if err != nil {
+		return false, fmt.Errorf("Setting file permissions failed: %v", err)
+	}
+
+	err = os.Rename(path, r.Path)
+	if err != nil {
+		return false, fmt.Errorf("Moving file failed %s: %v", path, err)
+	}
+
+	if r.PostUpdateCommand != "" {
+		err := utils.RunCmd(r.PostUpdateCommand, r.PostUpdateCommandTimeout)
+		if err != nil {
+			return false, fmt.Errorf("Post-update cmd failed: %v", err)
+		}
+	}
+
+	return true, nil
+}
+
 func connectionWorker(c *connection.Connection) {
 	log.Printf("[%s] Connected started", c.Name)
 
@@ -33,55 +90,19 @@ func connectionWorker(c *connection.Connection) {
 			if time.Now().After(r.NextUpdateTime) {
 				log.Printf("[%s][%s] Updating resource", c.Name, r.Path)
 
-				modified, path, err := c.Download(r)
+				modified, err := processResource(c, r)
 				if err != nil {
-					log.Printf("[%s][%s] Downloading resource failed: %v", c.Name, r.Path, err)
+					log.Printf("[%s][%s] Resource failed to update: %v", c.Name, r.Path, err)
 					r.SetNextUpdateTime(r.RetryInterval)
-					continue
-				}
-
-				if !modified {
-					log.Printf("[%s][%s] Resource not modified; download not performed", c.Name, r.Path)
-					r.SetNextUpdateTime(r.Interval)
-					continue
-				}
-
-				// Avoid unnecessary overwrite if files are the same
-				equal := utils.DeepCompare(path, r.Path)
-				if equal {
-					log.Printf("[%s][%s] Resource not modified", c.Name, r.Path)
-					r.SetNextUpdateTime(r.Interval)
-					continue
-				}
-
-				perms := r.Perms
-				if perms == 0 {
-					fileInfo, err := os.Stat(r.Path)
-					if err != nil {
-						perms = os.FileMode(int(0664))
+				} else {
+					if modified {
+						log.Printf("[%s][%s] Resource successfully updated", c.Name, r.Path)
+						r.SetLastUpdateTime()
 					} else {
-						perms = fileInfo.Mode()
+						log.Printf("[%s][%s] Resource not modified", c.Name, r.Path)
 					}
+					r.SetNextUpdateTime(r.Interval)
 				}
-
-				err = permissions.SetFilePermissions(path, r.User, r.Group, perms)
-				if err != nil {
-					log.Printf("[%s][%s] Setting file permissions failed: %v", c.Name, r.Path, err)
-					r.SetNextUpdateTime(r.RetryInterval)
-					continue
-				}
-
-				err = os.Rename(path, r.Path)
-				if err != nil {
-					log.Printf("[%s][%s] Moving file failed %s: %v", c.Name, r.Path, path, err)
-					r.SetNextUpdateTime(r.RetryInterval)
-					continue
-				}
-
-				log.Printf("[%s][%s] Resource successfully updated", c.Name, r.Path)
-
-				r.SetNextUpdateTime(r.Interval)
-				r.SetLastUpdateTime()
 			}
 		}
 		time.Sleep(1000 * time.Millisecond)

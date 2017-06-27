@@ -10,8 +10,12 @@ type Resource struct {
 	Path       string // Absolute file path
 	RemotePath string // ConnectionTypeHTTP: If set, appended to the URL, ConnectionTypeGist: Gist file (optional) */
 	// Configuration
-	Interval      int // Seconds
-	RetryInterval int // Seconds
+	Interval                 int    // Seconds
+	RetryInterval            int    // Seconds
+	PreUpdateCommand         string // Command to run before updating resource
+	PreUpdateCommandTimeout  int    // Seconds
+	PostUpdateCommand        string // Command to run after updating resource
+	PostUpdateCommandTimeout int    // Seconds
 	// File attributes
 	User  string      // User for UID
 	Group string      // Group for GID
@@ -24,7 +28,7 @@ type Resource struct {
 
 // CreateResource - Create a new resource object
 func CreateResource(path string) Resource {
-	return Resource{path, "", 60, 30, "", "", 0, time.Time{}, time.Time{}, time.Time{}}
+	return Resource{path, "", 60, 30, "", 10, "", 10, "", "", 0, time.Time{}, time.Time{}, time.Time{}}
 }
 
 // SetNextUpdateTime - Set next update to given interval

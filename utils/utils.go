@@ -2,9 +2,12 @@ package utils
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/ssh"
@@ -73,4 +76,13 @@ func PublicKeyFile(file string) ssh.AuthMethod {
 	}
 
 	return ssh.PublicKeys(key)
+}
+
+// RunCmd executes a cmd from a string
+func RunCmd(cmd string, timeout int) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+	defer cancel()
+	args := strings.Split(cmd, " ")
+	err := exec.CommandContext(ctx, args[0], args[1:]...).Run()
+	return err
 }

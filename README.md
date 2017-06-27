@@ -81,6 +81,10 @@ Resource settings:
 - `perms`: File permissions (Default 0644)
 - `user`: File user (optional)
 - `group`: 'File group (optional)
+- `pre_update_cmd`: Command to run before updating (optional)
+- `pre_update_timeout`: Pre-update command timeout (Default 10 seconds)
+- `post_update_cmd`: Command to run after updating (optional)
+- `post_update_timeout`: Post-update command timeout (Default 10 seconds)
 
 HTTP settings:
 
