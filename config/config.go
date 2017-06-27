@@ -41,18 +41,7 @@ func parseConnectionConfig(connFile string) (connections []*connection.Connectio
 		}
 
 		if connType == "gist" {
-			// Required
-			connGistID, err := c.String(section, "gist_id")
-			if err != nil {
-				return connections, fmt.Errorf("%s: Section %s missing gist_id", connFile, section)
-			}
-
-			connGistUsername, err := c.String(section, "gist_username")
-			if err != nil {
-				return connections, fmt.Errorf("%s: Section %s missing gist_username", connFile, section)
-			}
-
-			conn := connection.CreateGitHubGistConnection(section, connGistID, connGistUsername)
+			conn := connection.CreateGitHubGistConnection(section)
 
 			// Optional
 			connURL, err := c.String(section, "url")
@@ -269,8 +258,29 @@ func parseResourceConfig(resConfig string, connections []*connection.Connection)
 		resRemotePath, err := c.String(section, "remote_path")
 		if err == nil {
 			res.RemotePath = resRemotePath
-		} else if err != nil && conn.Type != connection.ConnectionTypeHTTP {
+		} else if conn.Type == connection.ConnectionTypeFTP ||
+			conn.Type == connection.ConnectionTypeSFTP ||
+			conn.Type == connection.ConnectionTypeDropbox {
 			return fmt.Errorf("%s: Section %s missing remote_path", resConfig, section)
+		}
+
+		if conn.Type == connection.ConnectionTypeGitHubGist {
+			resGistID, err := c.String(section, "gist_id")
+			if err != nil {
+				return fmt.Errorf("%s: Section %s missing gist_id", resConfig, section)
+			}
+			res.GistID = resGistID
+
+			resGitHubUsername, err := c.String(section, "github_username")
+			if err != nil {
+				return fmt.Errorf("%s: Section %s missing github_username", resConfig, section)
+			}
+			res.GitHubUsername = resGitHubUsername
+
+			resGitHubToken, err := c.String(section, "github_token")
+			if err == nil {
+				res.GitHubToken = resGitHubToken
+			}
 		}
 
 		conn.Resources = append(conn.Resources, &res)

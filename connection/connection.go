@@ -74,8 +74,6 @@ type Connection struct {
 	AuthUsername  string
 	AuthPassword  string
 	PrivateKey    string
-	GistID        string // GitHub Gist ID (32 character hex string)
-	GistUsername  string // GitHub Gist Username
 	DropboxToken  string // Dropbox OAuth 2 access token
 }
 
@@ -181,7 +179,7 @@ func downloadHTTP(c *Connection, r *resource.Resource, tmpFile *os.File) (modifi
 	url := c.URL
 
 	if c.Type == ConnectionTypeGitHubGist {
-		url = fmt.Sprintf("%s/%s/%s/raw/%s", url, c.GistUsername, c.GistID, r.RemotePath)
+		url = fmt.Sprintf("%s/%s/%s/raw/%s", url, r.GitHubUsername, r.GistID, r.RemotePath)
 	} else if c.Type == ConnectionTypeHTTP && r.RemotePath != "" {
 		url = fmt.Sprintf("%s/%s", url, r.RemotePath)
 	}
@@ -193,6 +191,10 @@ func downloadHTTP(c *Connection, r *resource.Resource, tmpFile *os.File) (modifi
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return
+	}
+
+	if c.Type == ConnectionTypeGitHubGist && r.GitHubToken != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("token %s", r.GitHubToken))
 	}
 
 	req.Header.Set("If-Modified-Since", r.LastModifiedTime.UTC().Format(http.TimeFormat))
@@ -256,7 +258,7 @@ func downloadDropbox(c *Connection, r *resource.Resource, tmpFile *os.File) (mod
 
 // CreateConnection - Create a base connection
 func CreateConnection(name string, connType int, connDownloadFunc downloadFunc) Connection {
-	return Connection{name, connType, []*resource.Resource{}, connDownloadFunc, nil, nil, DefaultTimeout, false, "", "", 0, DefaultMaxPacketSize, "", "", "", "", "", ""}
+	return Connection{name, connType, []*resource.Resource{}, connDownloadFunc, nil, nil, DefaultTimeout, false, "", "", 0, DefaultMaxPacketSize, "", "", "", ""}
 }
 
 // CreateHTTPConnection - Create a new HTTP connection
@@ -266,12 +268,10 @@ func CreateHTTPConnection(name string, url string) Connection {
 	return c
 }
 
-// CreateGitHubGistConnection - Create a new GitHub Gist (HTTP) connection
-func CreateGitHubGistConnection(name, gistID, gistUsername string) Connection {
-	c := CreateHTTPConnection(name, DefaultGitHubGistURL)
-	c.Type = ConnectionTypeGitHubGist
-	c.GistID = gistID
-	c.GistUsername = gistUsername
+// CreateGitHubGistConnection - Create a new GitHub gist connection
+func CreateGitHubGistConnection(name string) Connection {
+	c := CreateConnection(name, ConnectionTypeGitHubGist, downloadHTTP)
+	c.URL = DefaultGitHubGistURL
 	return c
 }
 

@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+const ()
+
 // Resource - Filesystem resource
 type Resource struct {
 	Path       string // Absolute file path
@@ -16,6 +18,9 @@ type Resource struct {
 	PreUpdateCommandTimeout  int    // Seconds
 	PostUpdateCommand        string // Command to run after updating resource
 	PostUpdateCommandTimeout int    // Seconds
+	GistID                   string // GitHub Gist ID (32 character hex string)
+	GitHubUsername           string // GitHub Username
+	GitHubToken              string // GitHub OAuth2 Token
 	// File attributes
 	User  string      // User for UID
 	Group string      // Group for GID
@@ -28,7 +33,7 @@ type Resource struct {
 
 // CreateResource - Create a new resource object
 func CreateResource(path string) Resource {
-	return Resource{path, "", 60, 30, "", 10, "", 10, "", "", 0, time.Time{}, time.Time{}, time.Time{}}
+	return Resource{path, "", 60, 30, "", 10, "", 10, "", "", "", "", "", 0, time.Time{}, time.Time{}, time.Time{}}
 }
 
 // SetNextUpdateTime - Set next update to given interval

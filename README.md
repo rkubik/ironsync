@@ -35,6 +35,10 @@ Currently supported:
 - FTP
 - Dropbox (OAuth 2)
 
+Planned:
+
+- GitHub Repositories
+
 Connection settings:
 
 - `timeout`: Connection timeout (Default 30 sec)
@@ -48,8 +52,6 @@ HTTP settings:
 GitHub Gist settings:
 
 - `url`: Custom URL (optional)
-- `gist_username`: GitHub username
-- `gist_id`: GitHub gist ID (32 character hex string)
 
 SFTP settings:
 
@@ -94,7 +96,8 @@ GitHub Gist settings:
 
 - `remote_path`: Gist file, if Gist ID refers to multi-file (optional)
 - `gist_id`: GitHub Gist ID (32 character hex identifier)
-- `gist_username`: GistHub Gist Username
+- `github_username`: GitHub Gist Username
+- `github_token`: GitHub OAuth2 Token (optional)
 
 SFTP settings:
 
