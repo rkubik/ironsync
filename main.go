@@ -10,6 +10,8 @@ import (
 	"ironsync/utils"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 )
 
@@ -25,6 +27,11 @@ var (
 	progName = "ironsync"
 	// ProgVersion - Current version
 	progVersion = "0.1.0"
+)
+
+// Global variables
+var (
+	doReload = false
 )
 
 func processResource(c *connection.Connection, r *resource.Resource) (bool, error) {
@@ -87,8 +94,14 @@ func connectionWorker(c *connection.Connection) {
 
 	for {
 		for _, r := range c.Resources {
-			if time.Now().After(r.NextUpdateTime) {
-				log.Printf("[%s][%s] Updating resource", c.Name, r.Path)
+			if doReload || time.Now().After(r.NextUpdateTime) {
+				if doReload {
+					log.Printf("[%s][%s] Force updating resource", c.Name, r.Path)
+				} else {
+					log.Printf("[%s][%s] Updating resource", c.Name, r.Path)
+				}
+
+				doReload = false
 
 				modified, err := processResource(c, r)
 				if err != nil {
@@ -127,7 +140,10 @@ func main() {
 		}
 	}
 
-	for {
-		time.Sleep(1000 * time.Millisecond)
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGHUP)
+
+	for _ = range c {
+		doReload = true
 	}
 }

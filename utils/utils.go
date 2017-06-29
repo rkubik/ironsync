@@ -78,7 +78,7 @@ func PublicKeyFile(file string) ssh.AuthMethod {
 	return ssh.PublicKeys(key)
 }
 
-// RunCmd executes a cmd from a string
+// RunCmd executes a cmd from a string (todo: better support)
 func RunCmd(cmd string, timeout int) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()

@@ -17,7 +17,7 @@ import (
 
 	"github.com/jlaffaye/ftp"
 	"github.com/pkg/sftp"
-	"github.com/tj/go-dropbox"
+	dropbox "github.com/tj/go-dropbox"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 )

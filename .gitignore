@@ -1,2 +1,5 @@
 ironsync
 ironsync.exe
+.vscode/
+.cproject/
+.project/
