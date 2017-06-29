@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"strings"
 	"time"
 
 	"golang.org/x/crypto/ssh"
@@ -82,7 +81,6 @@ func PublicKeyFile(file string) ssh.AuthMethod {
 func RunCmd(cmd string, timeout int) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
-	args := strings.Split(cmd, " ")
-	err := exec.CommandContext(ctx, args[0], args[1:]...).Run()
+	err := exec.CommandContext(ctx, "sh", "-c", cmd).Run()
 	return err
 }
