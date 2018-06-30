@@ -5,7 +5,10 @@ import (
 	"ironsync/connection"
 	"ironsync/resource"
 	"os"
+	"os/user"
 	"strconv"
+	"path"
+	"strings"
 
 	"github.com/robfig/config"
 )
@@ -186,6 +189,8 @@ func parseResourceConfig(resConfig string, connections []*connection.Connection)
 			continue
 		}
 
+		local_path := section
+
 		connName, err := c.String(section, "connection")
 		if err != nil {
 			return fmt.Errorf("%s: Section %s missing connection", resConfig, section)
@@ -196,9 +201,20 @@ func parseResourceConfig(resConfig string, connections []*connection.Connection)
 			return fmt.Errorf("%s: Section %s invalid connection %s", resConfig, section, connName)
 		}
 
-		res := resource.CreateResource(section)
+		// Cleanup path
+		if strings.HasPrefix(section, "~") {
+			user, err := user.Current()
+			if err != nil {
+				panic(err)
+			}
+			local_path = user.HomeDir + section[1:]
+		}
 
-		resStat, err := os.Stat(section)
+		local_path = path.Clean(local_path)
+
+		res := resource.CreateResource(local_path)
+
+		resStat, err := os.Stat(local_path)
 		if err == nil {
 			res.LastModifiedTime = resStat.ModTime()
 		}
