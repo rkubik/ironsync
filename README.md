@@ -9,6 +9,7 @@ settings, key files, IDE preferences, password databases, etc.
 ## OS Support
 
 - Linux
+- macOS
 - Windows (partial, permissions untested)
 
 ## Building
